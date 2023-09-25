@@ -3583,7 +3583,7 @@ void Node::get_meta_list(List<StringName> *p_list) const {
 }
 
 Error Node::emit_signalp(const StringName &p_name, const Variant **p_args, int p_argcount) {
-	ERR_THREAD_GUARD_V(ERR_INVALID_PARAMETER);
+	// ERR_THREAD_GUARD_V(ERR_INVALID_PARAMETER);
 	return Object::emit_signalp(p_name, p_args, p_argcount);
 }
 

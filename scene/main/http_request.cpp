@@ -28,8 +28,12 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "http_request.h"
+#include <thread>
+
 #include "core/io/compression.h"
+#include "core/os/thread.h"
+#include "core/variant/variant_utility.h"
+#include "http_request.h"
 #include "scene/main/timer.h"
 
 Error HTTPRequest::_request() {
@@ -472,13 +476,37 @@ bool HTTPRequest::_update_connection() {
 }
 
 void HTTPRequest::_defer_done(int p_status, int p_code, const PackedStringArray &p_headers, const PackedByteArray &p_data) {
-	call_deferred(SNAME("_request_done"), p_status, p_code, p_headers, p_data);
+	if (is_using_threads()) {
+		Thread *worker_thread = memnew(Thread);
+
+		this->p_status = p_status;
+		this->p_code = p_code;
+		this->p_headers = p_headers;
+		this->p_data = p_data;
+
+		worker_thread->start(&HTTPRequest::_request_done_async, this);
+		// worker_thread->wait_to_finish();
+
+		// worker.join();
+
+		// call_deferred_thread_group("_request_done", p_status, p_code, p_headers, p_data);
+	} else {
+		call_deferred(SNAME("_request_done"), p_status, p_code, p_headers, p_data);
+	}
 }
 
 void HTTPRequest::_request_done(int p_status, int p_code, const PackedStringArray &p_headers, const PackedByteArray &p_data) {
 	cancel_request();
 
 	emit_signal(SNAME("request_completed"), p_status, p_code, p_headers, p_data);
+}
+
+void HTTPRequest::_request_done_async(void *p_userdata) {
+	HTTPRequest *hr = static_cast<HTTPRequest *>(p_userdata);
+
+	hr->cancel_request();	
+
+	hr->emit_signal(SNAME("request_completed"), hr->p_status, hr->p_code, hr->p_headers, hr->p_data);
 }
 
 void HTTPRequest::_notification(int p_what) {
@@ -622,6 +650,7 @@ void HTTPRequest::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_body_size"), &HTTPRequest::get_body_size);
 
 	ClassDB::bind_method(D_METHOD("_request_done"), &HTTPRequest::_request_done);
+	// ClassDB::bind_method(D_METHOD("_request_done_async"), &HTTPRequest::_request_done_async);
 
 	ClassDB::bind_method(D_METHOD("set_timeout", "timeout"), &HTTPRequest::set_timeout);
 	ClassDB::bind_method(D_METHOD("get_timeout"), &HTTPRequest::get_timeout);

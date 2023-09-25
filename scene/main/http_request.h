@@ -73,6 +73,11 @@ private:
 	HTTPClient::Method method;
 	Vector<uint8_t> request_data;
 
+	int p_status;
+	int p_code;
+	PackedStringArray p_headers;
+	PackedByteArray p_data;
+
 	bool request_sent = false;
 	Ref<HTTPClient> client;
 	PackedByteArray body;
@@ -118,6 +123,7 @@ private:
 
 	void _defer_done(int p_status, int p_code, const PackedStringArray &p_headers, const PackedByteArray &p_data);
 	void _request_done(int p_status, int p_code, const PackedStringArray &p_headers, const PackedByteArray &p_data);
+	static void _request_done_async(void *p_data);
 	static void _thread_func(void *p_userdata);
 
 protected:
